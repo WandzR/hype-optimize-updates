@@ -1,0 +1,8 @@
+{
+    "configured":  true,
+    "channel":  "beta",
+    "publicKeys":  [
+                       "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA/H/qFOk6wKgGJPhwyEjEl2qqlBM7KfNgvaQc10Zy0Co=\n-----END PUBLIC KEY-----\n"
+                   ],
+    "repository":  "WandzR/hype-optimize-updates"
+}

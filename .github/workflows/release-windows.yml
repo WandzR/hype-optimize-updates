@@ -1,0 +1,70 @@
+name: Publicar Hype Beta para Windows
+on:
+  push:
+    tags: ['v*-beta.*']
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: Tag existente no codigo privado
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: hype-beta-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    env:
+      HYPE_BUILD_CHANNEL: local-validation
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: WandzR/hype-optimize
+          ref: ${{ inputs.version_tag || github.ref_name }}
+          path: source
+          ssh-key: ${{ secrets.HYPE_SOURCE_READ_KEY }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Conferir destino e versao
+        shell: pwsh
+        env:
+          REQUESTED_TAG: ${{ inputs.version_tag || github.ref_name }}
+        run: |
+          $config=Get-Content release-config.json -Raw|ConvertFrom-Json
+          $package=Get-Content package.json -Raw|ConvertFrom-Json
+          if($config.repository -ne $env:GITHUB_REPOSITORY -or $env:REQUESTED_TAG -ne "v$($package.version)"){throw 'Tag ou destino divergente.'}
+      - run: npm ci
+      - name: Validar recuperacao, permissao, contadores e atualizacoes
+        run: node --test --test-timeout=45000 tests/auto-update.test.js tests/update*.test.js tests/release-security.test.js tests/plan-recovery.test.js tests/plan-expiration-integration.test.js tests/recovery-cycle.test.js tests/recovery-tasks.test.cjs tests/local-motor.test.cjs tests/hype-preview.test.cjs tests/premium-access.test.js tests/access-policy.test.js tests/dns-engine.test.js tests/counternativo-*.test.js tests/counternativo-compat.test.cjs
+      - name: Compilar e validar o motor protegido
+        run: node tools/test-protected-native.cjs
+      - name: Gerar setup e assinar manifesto
+        env:
+          HYPE_RELEASE_PRIVATE_KEY: ${{ secrets.HYPE_RELEASE_PRIVATE_KEY }}
+        run: npm run build:beta
+      - name: Conferir integridade do pacote e recusar adulteracao
+        run: node tools/review-protected-package.cjs --bootstrap-only
+      - name: Publicar versao e canal beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/publish-release.cjs
+      - name: Guardar evidencias
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hype-beta-build-evidence
+          path: |
+            source/build/protection-review.json
+            source/build/protected-native-tests/result.json
+          if-no-files-found: ignore
+          retention-days: 14
