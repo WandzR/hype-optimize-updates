@@ -54,6 +54,18 @@ jobs:
         run: npm run build:beta
       - name: Conferir integridade do pacote e recusar adulteracao
         run: node tools/review-protected-package.cjs --bootstrap-only
+      - name: Ensaiar instalacao silenciosa
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
+          $setup = (Resolve-Path -LiteralPath "dist/installer/Hype-Optimize-Setup-$version-x64.exe").ProviderPath
+          $target = Join-Path $env:RUNNER_TEMP 'hype-beta-install'
+          if (Test-Path -LiteralPath $target) { throw 'O destino do ensaio deve estar vazio.' }
+          $installer = Start-Process -FilePath $setup -ArgumentList @('/S', "/D=$target") -WindowStyle Hidden -Wait -PassThru
+          if ($installer.ExitCode -ne 0) { throw "O setup falhou com código $($installer.ExitCode)." }
+          node tools/verify-protected-package.cjs $target
+          if ($LASTEXITCODE -ne 0) { throw 'A instalação não passou na verificação de integridade.' }
       - name: Publicar versao e canal beta
         env:
           GH_TOKEN: ${{ github.token }}
