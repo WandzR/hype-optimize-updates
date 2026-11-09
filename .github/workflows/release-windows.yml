@@ -45,7 +45,7 @@ jobs:
           if($config.repository -ne $env:GITHUB_REPOSITORY -or $env:REQUESTED_TAG -ne "v$($package.version)"){throw 'Tag ou destino divergente.'}
       - run: npm ci
       - name: Validar recuperacao, permissao, contadores e atualizacoes
-        run: node --test --test-timeout=45000 tests/theme.test.js tests/profiles.test.js tests/operation-progress.test.js tests/auto-update.test.js tests/update*.test.js tests/release-security.test.js tests/plan-recovery.test.js tests/plan-expiration-integration.test.js tests/recovery-cycle.test.js tests/recovery-tasks.test.cjs tests/local-motor.test.cjs tests/hype-preview.test.cjs tests/premium-access.test.js tests/premium-presentation.test.js tests/account-access-sync.test.js tests/access-policy.test.js tests/dns-engine.test.js tests/counternativo-*.test.js tests/counternativo-compat.test.cjs
+        run: node --test --test-timeout=45000 tests/theme.test.js tests/profiles.test.js tests/execution.test.js tests/operation-progress.test.js tests/admin-access.test.js tests/windows-startup.test.js tests/auto-update.test.js tests/update*.test.js tests/release-security.test.js tests/plan-recovery.test.js tests/plan-expiration-integration.test.js tests/recovery-cycle.test.js tests/recovery-tasks.test.cjs tests/local-motor.test.cjs tests/hype-preview.test.cjs tests/premium-access.test.js tests/premium-presentation.test.js tests/account-access-sync.test.js tests/access-policy.test.js tests/dns-engine.test.js tests/counternativo-*.test.js tests/counternativo-compat.test.cjs
       - name: Compilar e validar o motor protegido
         run: |
           node --test tests/loose-source-cleanup.test.js
