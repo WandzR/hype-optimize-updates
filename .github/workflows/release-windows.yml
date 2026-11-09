@@ -45,7 +45,7 @@ jobs:
           if($config.repository -ne $env:GITHUB_REPOSITORY -or $env:REQUESTED_TAG -ne "v$($package.version)"){throw 'Tag ou destino divergente.'}
       - run: npm ci
       - name: Validar recuperacao, permissao, contadores e atualizacoes
-        run: node --test --test-timeout=45000 tests/theme.test.js tests/profiles.test.js tests/execution.test.js tests/privacy-controls.test.js tests/release42.test.js tests/native-inventory-watch.test.js tests/operation-progress.test.js tests/admin-access.test.js tests/windows-startup.test.js tests/auto-update.test.js tests/update*.test.js tests/release-security.test.js tests/plan-recovery.test.js tests/plan-expiration-integration.test.js tests/recovery-cycle.test.js tests/recovery-tasks.test.cjs tests/local-motor.test.cjs tests/hype-preview.test.cjs tests/premium-access.test.js tests/premium-presentation.test.js tests/account-access-sync.test.js tests/access-policy.test.js tests/dns-engine.test.js tests/counternativo-*.test.js tests/counternativo-compat.test.cjs
+        run: node --test --test-timeout=45000 tests/theme.test.js tests/profiles.test.js tests/execution.test.js tests/privacy-controls.test.js tests/release42.test.js tests/native-inventory-watch.test.js tests/operation-progress.test.js tests/admin-access.test.js tests/windows-startup.test.js tests/windows-startup-user.test.js tests/window-visibility.test.js tests/auto-update.test.js tests/update*.test.js tests/release-security.test.js tests/plan-recovery.test.js tests/plan-expiration-integration.test.js tests/recovery-cycle.test.js tests/recovery-tasks.test.cjs tests/local-motor.test.cjs tests/hype-preview.test.cjs tests/premium-access.test.js tests/premium-presentation.test.js tests/account-access-sync.test.js tests/access-policy.test.js tests/dns-engine.test.js tests/counternativo-*.test.js tests/counternativo-compat.test.cjs
       - name: Compilar e validar o motor protegido
         run: |
           node --test tests/loose-source-cleanup.test.js
@@ -63,12 +63,14 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $version = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
           $setup = (Resolve-Path -LiteralPath "dist/installer/Hype-Optimize-Setup-$version-x64.exe").ProviderPath
-          $target = Join-Path $env:RUNNER_TEMP 'hype-beta-install'
+          $target = Join-Path $env:ProgramFiles 'Hype Optimize'
           if (Test-Path -LiteralPath $target) { throw 'O destino do ensaio deve estar vazio.' }
-          $installer = Start-Process -FilePath $setup -ArgumentList @('/S', "/D=$target") -WindowStyle Hidden -Wait -PassThru
+          $installer = Start-Process -FilePath $setup -ArgumentList '/S' -WindowStyle Hidden -Wait -PassThru
           if ($installer.ExitCode -ne 0) { throw "O setup falhou com código $($installer.ExitCode)." }
           node tools/verify-protected-package.cjs $target
           if ($LASTEXITCODE -ne 0) { throw 'A instalação não passou na verificação de integridade.' }
+          node -e "const s=require('./app/windows-startup.cjs');if(!s.protectedStartupPath(process.argv[1]))throw Error('Instalação fora do caminho administrativo');console.log(s.createWindowsStartup(process.argv[1]).register())" (Join-Path $target 'Hype Optimize.exe')
+          if ($LASTEXITCODE -ne 0) { throw 'O Agendador não confirmou a abertura administrativa e o início no login.' }
       - name: Publicar versao e canal beta
         env:
           GH_TOKEN: ${{ github.token }}
